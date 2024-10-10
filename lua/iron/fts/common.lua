@@ -35,6 +35,21 @@ local function remove_empty_lines(lines)
 end
 
 
+---@param lines table
+-- Removes comments
+local function remove_comments(lines)
+  local newlines = {}
+
+  for _, line in pairs(lines) do
+    if string.match(line, "^#") == nil then
+      table.insert(newlines, line)
+    end
+  end
+
+  return newlines
+end
+
+
 ---@param s string
 --- A helper function using in bracked_paste_python.
 -- Checks in a string starts with any of the exceptions.
@@ -100,6 +115,7 @@ common.bracketed_paste_python = function(lines, extras)
   local is_ipython = contains(cmd, "ipython")
 
   lines = remove_empty_lines(lines)
+  lines = remove_comments(lines)
 
   local indent_open = false
   for i, line in ipairs(lines) do
