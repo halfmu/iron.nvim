@@ -35,6 +35,21 @@ local function remove_empty_lines(lines)
 end
 
 
+---@param lines table
+-- Removes comments
+local function remove_comments(lines)
+  local newlines = {}
+
+  for _, line in pairs(lines) do
+    if string.match(line, "^#") == nil then
+      table.insert(newlines, line)
+    end
+  end
+
+  return newlines
+end
+
+
 ---@param s string
 --- A helper function using in bracked_paste_python.
 -- Checks in a string starts with any of the exceptions.
@@ -117,20 +132,44 @@ common.bracketed_paste_python = function(lines, extras)
   end
 
   lines = remove_empty_lines(lines)
+  lines = remove_comments(lines)
 
   local indent_open = false
+  local inside_triple_quote = false
+  local triple_quote_type = ""
+
   for i, line in ipairs(lines) do
-    if string.match(line, "^%s") ~= nil then
-      indent_open = true
+    -- Detect entering or exiting triple-quoted blocks
+    if not inside_triple_quote then
+      local match_start = string.match(line, "'''") or string.match(line, '"""')
+      if match_start then
+        inside_triple_quote = true
+        triple_quote_type = match_start
+      end
+    else
+      if string.find(line, triple_quote_type) then
+        inside_triple_quote = false
+        triple_quote_type = ""
+      end
     end
 
-    table.insert(result, line)
+    -- Directly add lines if inside triple-quoted block
+    if inside_triple_quote then
+      table.insert(result, line)
+    else
+      -- Process lines normally
+      if string.match(line, "^%s") ~= nil then
+        indent_open = true
+      end
 
-    if windows and python or not windows then
-      if i < #lines and indent_open and string.match(lines[i + 1], "^%s") == nil then
-        if not python_close_indent_exceptions(lines[i + 1]) then
-          indent_open = false
-          table.insert(result, cr)
+      table.insert(result, line)
+
+      if windows and python or not windows then
+        if i < #lines and indent_open and string.match(lines[i + 1], "^%s") == nil then
+          if not python_close_indent_exceptions(lines[i + 1]) then
+            indent_open = false
+            table.insert(result, cr)
+          end
         end
       end
     end
